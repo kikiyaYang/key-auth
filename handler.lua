@@ -110,7 +110,7 @@ function checkpropToken(method,oriUri)
       end 
 
 
-      temp_params=apiutil.get_uri_params("/uploads/tokens/:ownerid",oriUri)
+      temp_params=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri)
 
       --判断url的ownerid与token中的ownerid是否一致
       if temp_params then 
@@ -119,11 +119,12 @@ function checkpropToken(method,oriUri)
         if token then
           local oriToken = tokenutil.get_tokenAgent(token)
           local access_ownerid = oriToken["u"]
-          if access_ownerid~=params["ownerid"] then
-            return responses.send_HTTP_OK("wrong ownerid")
-          else
+          if access_ownerid==params["ownerid"] then
             --upatetoken之前先删除上一个token
             tokenutil.delete_token(oriToken["a"])
+          else
+            return responses.send_HTTP_OK("wrong ownerid")
+
           end
         end
          generateSelfToken()
@@ -201,7 +202,6 @@ function KeyAuthHandler:access(conf)
     else
       --如果有token参数，先判断token的格式是否正确
       local tokenObj=tokenutil.get_tokenAgent(token)
-      ngx.log(ngx.ERR,"++++"..cjson.encode(tokenObj))
       params["ownerid"]=tokenObj["u"]
       params["tokenid"]=tokenObj["a"]
       if not params["ownerid"] then

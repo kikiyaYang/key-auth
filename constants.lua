@@ -8,6 +8,10 @@ return {
         {
           ["GET"]="styles:read",
           ["POST,PUT,PATCH,DELETE"]="styles:write"
-    }
+         },
+         ["/upload/tokens"]=
+        {
+          ["GET"]="tokens:write"
+        }         
 }
   

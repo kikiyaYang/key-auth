@@ -64,11 +64,11 @@ end
 
 
 
-_M.delete_token=function(params)
+_M.delete_token=function(tokenid)
 
-  local token = singletons.dao.keyauth_token:find_all{params}
+  local token = singletons.dao.keyauth_token:find_all{id=tokenid}
   if token then
-    local tokenres, err = singletons.dao.keyauth_token:delete(token)
+    local tokenres, err = singletons.dao.keyauth_token:delete{id=tokenid}
     if err then
        return responses.send_HTTP_OK("删除token失败")
      end
@@ -101,8 +101,7 @@ _M.get_tokenAgent=function (token)
 
     local tempmsg=apiutil.split(token,".")
        
-    local tokenstr,err=ngx.decode_base64(tempmsg[2])
-       ngx.log(ngx.ERR,"----"..ngx.decode_base64(tempmsg[2]).."------")
+    local tokenstr=ngx.decode_base64(tempmsg[2])
 
     return cjson.decode(tokenstr)
 end

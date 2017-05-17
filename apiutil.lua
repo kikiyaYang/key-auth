@@ -1,4 +1,4 @@
-  local utils = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
 local constants=require "kong.plugins.key-auth.constants"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
@@ -39,14 +39,14 @@ _M.get_uri_params=function (pattern,uri)
   if string.find(pattern,":",1) then
     --local from,_,err=ngx.re.find(uri, pattern, "oj")
 --如果pattern中有变量，则依次判断,如果不匹配返回nil，如果匹配则进入下一次判断，如果为变量则放入uri_params中  
-    local uri_vals = _M.split(uri,"/")
+    local baseurl=_M.split(uri,"?")[1]
+    local uri_vals = _M.split(baseurl,"/")
     local pattern_vals = _M.split(pattern,"/")
 
     for i=1,#pattern_vals do
       
       local curstr = pattern_vals[i]
-          ngx.log(ngx.ERR,"++curstr++"..curstr.."++++++")
-
+        
       if string.len(curstr)~=0 then
         local startIndex,endIndex = string.find(curstr,":",1)
         --为变量，则存入table
@@ -87,7 +87,7 @@ end
 
 --根据三个参数生成token
 _M.generateToken =function(usage,ownerid,tokenId)
-    local token = ngx.encode_base64({["u"]=tokenId,["a"]=ownerid})
+    local token = ngx.encode_base64(cjson.encode({["a"]=tokenId,["u"]=ownerid}))
     local tokenEnd=string.gsub(math.random(),".","",2)
     return usage.."."..token.."."..tokenEnd
 
