@@ -43,7 +43,7 @@ local ENT_SCHEMA = {
   fields={
     id={type="string",dao_insert_value=true},
     status={type="string",required=true},
-    eId={type="string",required=false,default="0"}
+    ownerid={type="string",required=false,default="0"}
     
   },
   marshall_event=function( self,t )

@@ -6,6 +6,7 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local apiutil = require "kong.plugins.key-auth.apiutil"
 local tokenutil = require "kong.plugins.key-auth.tokenutil"
 local ownerutil = require "kong.plugins.key-auth.ownerutil"
+local utils = require "kong.tools.utils"
 
 
 local cjson = require "cjson.safe"
@@ -94,38 +95,57 @@ local function to_utf8(a)
   end  
 end 
 
-function setOwnerid(pattern,oriUri) 
 
-  params= apiutil.get_uri_params(pattern,oriUri,params)
-
-end
 
 function checkpropToken(method,oriUri)
-  local res,err
+  local temp_params
   if method=="GET" then
 
-      setOwnerid("/core/tokens/:ownerid",oriUri)
+      temp_params=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri)
       --登录成功后生成token以后，记录用户状态为已登录
-      ownerutil.owner_login(params["ownerid"])
+      if temp_params then
+        params=utils.table_merge(temp_params,params)
+        ownerutil.owner_login(params["ownerid"])
+        generateSelfToken()
+      end 
 
 
-      setOwnerid("/uploads/tokens/:ownerid",oriUri)
+      temp_params=apiutil.get_uri_params("/uploads/tokens/:ownerid",oriUri)
 
       --判断url的ownerid与token中的ownerid是否一致
-      local token = params["token"]
-      if token then
-        local oriToken = tokenutil.get_tokenAgent(token)
-        local access_ownerid = oriToken["u"]
-        if access_ownerid~=params["ownerid"] then
-          err="wrong ownerid"
-        else
-          --upatetoken之前先删除上一个token
-          tokenutil.delete_token(oriToken["a"])
+      if temp_params then 
+        params=utils.table_merge(temp_params,params)
+        local token = params["token"]
+        if token then
+          local oriToken = tokenutil.get_tokenAgent(token)
+          local access_ownerid = oriToken["u"]
+          if access_ownerid~=params["ownerid"] then
+            return responses.send_HTTP_OK("wrong ownerid")
+          else
+            --upatetoken之前先删除上一个token
+            tokenutil.delete_token(oriToken["a"])
+          end
         end
-      end
+         generateSelfToken()
+      end 
+
+      
+
+    elseif method=="DELETE" then
+      temp_params=apiutil.get_uri_params("/core/tokens/:ownerid/:tokenid",oriUri)
+      --如果用户退出登录 则删除最后一次的token 以及改变用户登录状态为未登录
+      if temp_params then
+        params=utils.table_merge(temp_params,params)
+        tokenutil.delete_token(params)
+        ownerutil.owner_logout(params["ownerid"])
+        return responses.send_HTTP_OK("删除成功")
+      end 
+    end
+end
 
 
-      local scopes_public= singletons.dao.keyauth_scope:find_all{public=true}
+function generateSelfToken()
+   local scopes_public= singletons.dao.keyauth_scope:find_all{public=true}
       local scopes = singletons.dao.keyauth_scope:find_all{public = false}
 
 
@@ -135,17 +155,8 @@ function checkpropToken(method,oriUri)
 
       local tokenRes=tokenutil.issue_token(tokenParams)
 
-      res = apiutil.generateToken("sk",ownerid,tokenRes["id"])
-
-    elseif method=="DELETE" then
-      setOwnerid("/core/tokens/:ownerid/:tokenid",oriUri)
-      tokenutil.delete_token(params)
-      ownerutil.owner_logout(params["ownerid"])
-
-    end
-    return res,err
-end
-
+      return responses.send_HTTP_OK(apiutil.generateToken("sk",ownerid,tokenRes["id"]))
+    end 
 
 
 function checkRedirect(oriUri,pattern)
@@ -167,21 +178,13 @@ function KeyAuthHandler:access(conf)
   local oriUri=apiutil.split(ngx.req.raw_header()," ")[2]
 
 
-
   --处理登录注册和查询所有scope,此时不需要token和ownerid，直接转发
   checkRedirect(oriUri,[[\/login]])
   checkRedirect(oriUri,[[\/scopes]])
 
-  ngx.log(ngx.ERR,"+=+++"..cjson.encode(params).."===+++")
 
   --登陆后第一次生成用户token和token定时刷新，以及退出时删除token
-  local res,err=checkpropToken(method,oriUri)
-  if res then
-    return responses.send_HTTP_OK(res)
-  end
-  if err then 
-    return responses.send_HTTP_OK(err)
-  end
+  checkpropToken(method,oriUri)
 
 
   --token增删改查
@@ -198,6 +201,7 @@ function KeyAuthHandler:access(conf)
     else
       --如果有token参数，先判断token的格式是否正确
       local tokenObj=tokenutil.get_tokenAgent(token)
+      ngx.log(ngx.ERR,"++++"..cjson.encode(tokenObj))
       params["ownerid"]=tokenObj["u"]
       params["tokenid"]=tokenObj["a"]
       if not params["ownerid"] then

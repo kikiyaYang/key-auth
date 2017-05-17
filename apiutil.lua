@@ -33,7 +33,8 @@ end
 
 
 --获取url中的ownerid req.params的键值对
-_M.get_uri_params=function (pattern,uri,params)
+_M.get_uri_params=function (pattern,uri)
+  local params = {}
 --如果pattern中无变量，则直接判断uri与pattern是否匹配
   if string.find(pattern,":",1) then
     --local from,_,err=ngx.re.find(uri, pattern, "oj")
@@ -44,6 +45,8 @@ _M.get_uri_params=function (pattern,uri,params)
     for i=1,#pattern_vals do
       
       local curstr = pattern_vals[i]
+          ngx.log(ngx.ERR,"++curstr++"..curstr.."++++++")
+
       if string.len(curstr)~=0 then
         local startIndex,endIndex = string.find(curstr,":",1)
         --为变量，则存入table
@@ -53,7 +56,7 @@ _M.get_uri_params=function (pattern,uri,params)
         --不为变量则判断是否一致
         else
           if pattern_vals[i]~=uri_vals[i] then
-            return 
+            return nil
           end
         end
       end

@@ -52,7 +52,7 @@ return {
       CREATE TABLE IF NOT EXISTS keyauth_ent(
         id text,
         status text,
-        eId text,
+        ownerid text,
         PRIMARY KEY (id)
       );
 
