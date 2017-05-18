@@ -78,12 +78,14 @@ _M.delete_token=function(tokenid)
 
 end
 
+
+--获取某个用户全部密钥
 _M.get_token=function(params)
 
     --判断是否有权限
     local token,err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"]}
     if token then           
-      local isvalid = string.find(token[1]["scopes"],"token:read",1)
+      local isvalid = string.find(token[1]["scopes"],"tokens:read",1)
       if isvalid then
         local credentials, err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"]}
         return responses.send_HTTP_OK(credentials)
