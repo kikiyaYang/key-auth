@@ -217,17 +217,18 @@ function KeyAuthHandler:access(conf)
       --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
     
       local scopes=load_credential(params["tokenid"])
+      params["scopes"]=scopes
+
       local myscopes=apiutil.getScope(oriUri,method)
+      local myscopesArr = apiutil.split(myscopes,",")
 
       local flag = false
-
-      for i = 1, #myscopes do
-
-          local index = string.find(scopes,myscopes[i], 1)
+      for i = 1, #myscopesArr do
+          local index = string.find(scopes,myscopesArr[i], 1)
 
           if not index then
             break
-          elseif i==#myscopes then
+          elseif i==#myscopesArr then
             flag=true
           end
        end

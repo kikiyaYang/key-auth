@@ -82,7 +82,7 @@ _M.get_token=function(params)
 
     --判断是否有权限
     local token,err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"]}
-    if token then      
+    if token then           
       local isvalid = string.find(token[1]["scopes"],"token:read",1)
       if isvalid then
         local credentials, err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"]}
