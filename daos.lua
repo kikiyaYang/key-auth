@@ -12,11 +12,10 @@ local SCHEMA = {
     ownerid = {type = "string", required = true},
     usage = {type = "string", required = false},
     token = {type = "string", required = true},
-    scopes = { type = "string", required = true},
-    isdeleted = { type = "bool", required = false,default=false}
+    scopes = { type = "string", required = true}
   },
   marshall_event = function(self, t)
-    return {id = t.id, ownerid= t.ownerid}
+    return {id = t.id}
   end
 }
 
@@ -32,7 +31,7 @@ local SCOPE_SCHEMA = {
     description={type="string",required=false}
   },
   marshall_event=function( self,t )
-    return {id=t.id,name=t.name,public=t.public}
+    return {id=t.id}
   end
 
 }

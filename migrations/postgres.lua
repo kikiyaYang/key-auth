@@ -12,7 +12,6 @@ return {
         usage text,
         token text,
         scopes text,
-        isdeleted bool,
         PRIMARY KEY (id)
       );
 
@@ -20,9 +19,6 @@ return {
       BEGIN
         IF (SELECT to_regclass('keyauth_token_id')) IS NULL THEN
           CREATE INDEX keyauth_token_id ON keyauth_token(id);
-        END IF;
-        IF (SELECT to_regclass('keyauth_token_ownerid')) IS NULL THEN
-          CREATE INDEX keyauth_token_ownerid ON keyauth_token(ownerid);
         END IF;
       END$$;
 
@@ -41,9 +37,6 @@ return {
       BEGIN
         IF (SELECT to_regclass('keyauth_scope_id')) IS NULL THEN
           CREATE INDEX keyauth_scope_id ON keyauth_scope(id);
-        END IF;
-        IF (SELECT to_regclass('keyauth_scope_name')) IS NULL THEN
-          CREATE INDEX keyauth_scope_name ON keyauth_scope(name);
         END IF;
       END$$;
 

@@ -67,18 +67,22 @@ _M.get_usage=function(newScopes)
 
 end
 
-
-_M.delete_token=function(tokenid)
-  local token = singletons.dao.keyauth_token:find_all{id=tokenid}
-  if token then
-    local tokenres, err = singletons.dao.keyauth_token:delete{id=tokenid}
+--params url参数 isupate，是否是updatetoken 如果是则删除成功后不返回 继续后面的代码，如果为false，则删除成功后返回
+_M.delete_token=function(params,isupdate)
+       
+  if params["id"] then
+    local tokenres, err = singletons.dao.keyauth_token:delete{id= params["id"]}
+    if tokenres then
+      if not isupdate then
+        return responses.send_HTTP_OK("删除token成功")
+      end
+    end
     if err then
        return responses.send_HTTP_OK("删除token失败")
      end
   else 
-    return responses.send_HTTP_OK("无此token")
+    return responses.send_HTTP_OK("缺少参数id")
   end
-
 end
 
 

@@ -37,6 +37,10 @@ local function load_credential(keyid)
     id = keyid
   }
 
+  if err then
+    return responses.send_HTTP_OK(err)
+  end
+  
   if not creds then
     return nil, err
   end
@@ -109,31 +113,8 @@ function checkpropToken(method,oriUri)
         generateSelfToken()
       end 
 
-
-      temp_params=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri)
-
-      --判断url的ownerid与token中的ownerid是否一致
-      if temp_params then 
-        params=utils.table_merge(temp_params,params)
-        local token = params["token"]
-        if token then
-          local oriToken = tokenutil.get_tokenAgent(token)
-          local access_ownerid = oriToken["u"]
-          if access_ownerid==params["ownerid"] then
-            --upatetoken之前先删除上一个token
-            tokenutil.delete_token(oriToken["a"])
-          else
-            return responses.send_HTTP_OK("wrong ownerid")
-
-          end
-        end
-         generateSelfToken()
-      end 
-
-      
-
     elseif method=="DELETE" then
-      temp_params=apiutil.get_uri_params("/core/tokens/:ownerid/:tokenid",oriUri)
+      temp_params=apiutil.get_uri_params("/core/tokens/:ownerid/:id",oriUri)
       --如果用户退出登录 则删除最后一次的token 以及改变用户登录状态为未登录
       if temp_params then
         params=utils.table_merge(temp_params,params)
@@ -184,14 +165,11 @@ function KeyAuthHandler:access(conf)
   checkRedirect(oriUri,[[\/scopes]])
 
 
-  --登陆后第一次生成用户token和token定时刷新，以及退出时删除token
+  --登陆后第一次生成用户token，以及退出时删除token
   checkpropToken(method,oriUri)
 
 
-  --token增删改查
-  local from, _, err = ngx.re.find(ngx.var.uri, [[\/api\/token]], "oj")
- 
- 
+  --其他接口都必须带上token参数，从token参数中获取tokenid和ownerid
   local token = params["token"]
 
   local tokenObj = {}
@@ -204,12 +182,12 @@ function KeyAuthHandler:access(conf)
       --如果有token参数，先判断token的格式是否正确
       local tokenObj=tokenutil.get_tokenAgent(token)
       params["ownerid"]=tokenObj["u"]
-      params["tokenid"]=tokenObj["a"]
+      params["id"]=tokenObj["a"]
       if not params["ownerid"] then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("token有误缺少ownerid信息")
       end
 
-      if not params["tokenid"] then
+      if not params["id"] then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("token有误缺少tokenid信息")
       end
 
@@ -217,12 +195,13 @@ function KeyAuthHandler:access(conf)
       --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
       --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
     
-      local scopes=load_credential(params["tokenid"])
+      local scopes=load_credential(params["id"])
       params["scopes"]=scopes
 
       local myscopes=apiutil.getScope(oriUri,method)
       local myscopesArr = apiutil.split(myscopes,",")
 
+      --根据接口参数token中的scopes与constant文件中的scope比对，判断是否有使用权限
       local flag = false
       for i = 1, #myscopesArr do
           local index = string.find(scopes,myscopesArr[i], 1)
@@ -234,8 +213,11 @@ function KeyAuthHandler:access(conf)
           end
        end
        
-       if flag then
+      if flag then
+        local from, _, err
         --如果token的格式正确，url为token的增删改查，则在本地处理数据库
+        from, _, err = ngx.re.find(ngx.var.uri, [[\/api\/token]], "oj")
+
         if from then
           if method=="POST" then
             tokenutil.issue_token(params)
@@ -245,15 +227,30 @@ function KeyAuthHandler:access(conf)
             tokenutil.updateToken(params)
 
           elseif method=="DELETE" then
-            tokenutil.delete_token(params)
+            tokenutil.delete_token(params,false)
           end
-       --如果token的格式正确，url为其他接口，
+        end
+
+        --如果token的格式正确，url为token的定时刷新，则在本地处理数据库
+        temp_params=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri)
+
+        --判断url的ownerid与token中的ownerid是否一致
+        if temp_params then 
+          params=utils.table_merge(temp_params,params)
+          --upatetoken之前先删除上一个token
+          tokenutil.delete_token(params,true)
+          generateSelfToken()
+        end
+
+
+        --如果token的格式正确，url为其他接口，
+        ngx.req.set_uri(ngx.ctx.uri.."/"..params["ownerid"])
+
        else 
-          ngx.req.set_uri(ngx.ctx.uri.."/"..params["ownerid"])
+          responses.send_HTTP_OK("该token无使用此url的权限")
        end
       end
- 
-   end
+
    return responses.send_HTTP_OK("nothing")
 end
 
