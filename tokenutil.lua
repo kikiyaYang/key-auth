@@ -20,38 +20,18 @@ _M.issue_token=function(params)
     local id= utils.uuid()
 
     if not params["usage"] then
+      params["usage"]= _M.get_usage(params["scopes"])     
+    end
 
-      local usageFlag=true  --默认新建密钥是pk 即public类型
-
-      local myscopes = utils.split(params["scopes"],",")
-      --根据当前所有的scopes的name查找scope表，判断usage是公有还是私有类型
-      if myscopes then 
-        for i=1,#myscopes do
-           local credentials, err = singletons.dao.keyauth_scope:find_all {name = myscopes[i]}
-            if err then 
-              return responses.send_HTTP_OK("scope格式出错")
-            end
-
-            if not credentials[1].public then
-              usageFlag=false
-              break
-            end
-          end
-        else
-          return responses.send_HTTP_OK("scope格式出错")
-        end        
-        params["usage"]= (usageFlag and "pk") or "sk"      
-      end
-
-      local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
-      local tokenres, err = singletons.dao.keyauth_token:insert({
-        id = id,
-        ownerid=params["ownerid"],
-        scopes =params["scopes"],
-        note=params["note"],
-        usage=params["usage"],
-        token=tokenVal
-        })
+    local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
+    local tokenres, err = singletons.dao.keyauth_token:insert({
+      id = id,
+      ownerid=params["ownerid"],
+      scopes =params["scopes"],
+      note=params["note"],
+      usage=params["usage"],
+      token=tokenVal
+      })
       if params["selfuse"] then
         return tokenres
       else
@@ -62,10 +42,33 @@ _M.issue_token=function(params)
     end
 end
 
+--根据当前所有的scopes的name查找scope表，判断usage是公有还是私有类型
+_M.get_usage=function(newScopes)
+
+  local usageFlag=true  --默认新建密钥是pk 即public类型
+
+  local myscopes = utils.split(newScopes,",")
+  if myscopes then 
+    for i=1,#myscopes do
+       local credentials, err = singletons.dao.keyauth_scope:find_all {name = myscopes[i]}
+        if err then 
+          return responses.send_HTTP_OK("scope格式出错")
+        end
+
+        if not credentials[1].public then
+          usageFlag=false
+          break
+        end
+      end
+  else
+    return responses.send_HTTP_OK("scope格式出错")
+  end        
+  return (usageFlag and "pk") or "sk"      
+
+end
 
 
 _M.delete_token=function(tokenid)
-
   local token = singletons.dao.keyauth_token:find_all{id=tokenid}
   if token then
     local tokenres, err = singletons.dao.keyauth_token:delete{id=tokenid}
@@ -76,6 +79,22 @@ _M.delete_token=function(tokenid)
     return responses.send_HTTP_OK("无此token")
   end
 
+end
+
+
+_M.updateToken=function(params)
+   local token,err = singletons.dao.keyauth_token:find_all {id = params["id"]}
+   local newtoken = {}
+   if params["scopes"] then
+    newtoken["scopes"]=params["scopes"]
+  end
+  if params["note"] then
+    newtoken["note"]=params["note"]
+  end
+
+   newtoken["usage"]=_M.get_usage(params["scopes"])
+    local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = params["id"]})
+    return responses.send_HTTP_OK(update_token)
 end
 
 

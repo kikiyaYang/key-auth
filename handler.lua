@@ -190,7 +190,8 @@ function KeyAuthHandler:access(conf)
 
   --token增删改查
   local from, _, err = ngx.re.find(ngx.var.uri, [[\/api\/token]], "oj")
-
+ 
+ 
   local token = params["token"]
 
   local tokenObj = {}
@@ -241,6 +242,7 @@ function KeyAuthHandler:access(conf)
           elseif method=="GET" then
             tokenutil.get_token(params)
           elseif method== "PATCH" then
+            tokenutil.updateToken(params)
 
           elseif method=="DELETE" then
             tokenutil.delete_token(params)

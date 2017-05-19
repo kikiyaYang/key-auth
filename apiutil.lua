@@ -112,7 +112,7 @@ _M.retrieve_parameters=function()
   else
     body_parameters = public_utils.get_post_args()
   end
-
+ ngx.log(ngx.ERR,cjson.encode(body_parameters).."++++")
 
   return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
 end
