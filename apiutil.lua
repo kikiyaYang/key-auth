@@ -3,6 +3,8 @@ local constants=require "kong.plugins.key-auth.constants"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
 local Multipart = require "multipart"
+local responses = require "kong.tools.responses"
+
 
 
 math.randomseed(os.time())
@@ -34,6 +36,7 @@ end
 
 --获取url中的ownerid req.params的键值对
 _M.get_uri_params=function (pattern,uri,origparams)
+ngx.log(ngx.ERR,"+++"..pattern.."+++"..uri)
   local params = {}
 --如果pattern中无变量，则直接判断uri与pattern是否匹配
   if string.find(pattern,":",1) then
@@ -61,6 +64,12 @@ _M.get_uri_params=function (pattern,uri,origparams)
             return nil
           end
         end
+      end
+    end
+    local ownerid = params["ownerid"]
+    if ownerid and origparams["ownerid"] then
+      if ownerid~=origparams["ownerid"] then
+        return responses.send_HTTP_OK("token的ownerid与接口不一致")
       end
     end
     return utils.table_merge(origparams,params)
@@ -134,7 +143,7 @@ _M.getScope=function (uri,method)
       end
     end
   end
-  return
+  return responses.send_HTTP_OK("没有设置此接口的scope")
 end
 
 

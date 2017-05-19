@@ -32,6 +32,7 @@ end
 
 
 local function load_credential(keyid)
+  ngx.log(ngx.ERR,keyid.."+++")
 
   local creds, err = singletons.dao.keyauth_token:find_all {
     id = keyid
@@ -109,7 +110,7 @@ function checkpropToken(method,oriUri)
       --登录成功后生成token以后，记录用户状态为已登录
       if resultparams then
         ownerutil.owner_login(resultparams["ownerid"])
-        generateSelfToken()
+        generateSelfToken(resultparams)
       end 
 
     elseif method=="DELETE" then
@@ -124,7 +125,7 @@ function checkpropToken(method,oriUri)
 end
 
 
-function generateSelfToken()
+function generateSelfToken(params)
    local scopes_public= singletons.dao.keyauth_scope:find_all{public=true}
       local scopes = singletons.dao.keyauth_scope:find_all{public = false}
 
@@ -242,16 +243,18 @@ function KeyAuthHandler:access(conf)
         --判断url的ownerid与token中的ownerid是否一致
         if resultparams then 
           --upatetoken之前先删除上一个token
-          tokenutil.delete_token(resultparams,true)
-          generateSelfToken()
+          tokenutil.delete_token(resultparams,true,oriUri)
+          generateSelfToken(resultparams)
         end
 
 
         --如果token的格式正确，url为其他接口，
-        ngx.req.set_uri(ngx.ctx.uri.."/"..params["ownerid"])
+        local redirect_base_url = apiutil.split(oriUri,"?")
+
+          ngx.req.set_uri(redirect_base_url[1])
 
        else 
-          responses.send_HTTP_OK("该token无使用此url的权限")
+         return  responses.send_HTTP_OK("该token无使用此url的权限")
        end
       end
 

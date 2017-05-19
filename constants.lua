@@ -4,9 +4,9 @@ return {
           ["GET"]="tokens:read",
           ["POST,PUT,PATCH,DELETE"]="tokens:write"
         },
-        ["/styleSet"]=
+        ["/styles"]=
         {
-          ["GET"]="styles:read",
+          ["GET"]="styles:list",
           ["POST,PUT,PATCH,DELETE"]="styles:write"
          },
          ["/upload/tokens"]=

@@ -16,7 +16,7 @@ _M.issue_token=function(params)
   --判断是否有权限
 
   local isvalid = string.find(params["scopes"],"tokens:write",1)
-  if true then
+  if isvalid then
     local id= utils.uuid()
 
     if not params["usage"] then
@@ -33,7 +33,11 @@ _M.issue_token=function(params)
       token=tokenVal
       })
       if params["selfuse"] then
-        return tokenres
+        if tokenres then
+          return tokenres
+        else 
+          return responses.send_HTTP_OK(err)
+        end 
       else
         return ((not err) and responses.send_HTTP_OK(tokenres)) or responses.send_HTTP_OK("新建token出错")
       end
@@ -70,7 +74,8 @@ end
 --params url参数 isupate，是否是updatetoken 如果是则删除成功后不返回 继续后面的代码，如果为false，则删除成功后返回
 --oriUri 为url，用于获取baseurl中的id
 _M.delete_token=function(params,isupdate,oriUri)
-  local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
+  local uri_param = (isupdate and "/upload/tokens/:ownerid") or "/api/token/:ownerid/:id"
+  local resultparams=apiutil.get_uri_params(uri_param,oriUri,params)
   if resultparams["id"] then
     local tokenres, err = singletons.dao.keyauth_token:delete{id= resultparams["id"]}
     if tokenres then
@@ -94,12 +99,15 @@ _M.updateToken=function(params,oriUri)
    local newtoken = {}
    if resultparams["scopes"] then
     newtoken["scopes"]=resultparams["scopes"]
+    newtoken["usage"]=_M.get_usage(resultparams["scopes"])
+    newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["id"],resultparams["ownerid"])
   end
   if resultparams["note"] then
     newtoken["note"]=resultparams["note"]
   end
 
-   newtoken["usage"]=_M.get_usage(resultparams["scopes"])
+
+
     local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = resultparams["id"]})
     return responses.send_HTTP_OK(update_token)
 end
