@@ -40,7 +40,7 @@ local function load_credential(keyid)
   if err then
     return responses.send_HTTP_OK(err)
   end
-  
+
   if not creds then
     return nil, err
   end
@@ -102,24 +102,22 @@ end
 
 
 function checkpropToken(method,oriUri)
-  local temp_params
+  local resultparams
   if method=="GET" then
 
-      temp_params=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri)
+      resultparams=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri,params)
       --登录成功后生成token以后，记录用户状态为已登录
-      if temp_params then
-        params=utils.table_merge(temp_params,params)
-        ownerutil.owner_login(params["ownerid"])
+      if resultparams then
+        ownerutil.owner_login(resultparams["ownerid"])
         generateSelfToken()
       end 
 
     elseif method=="DELETE" then
-      temp_params=apiutil.get_uri_params("/core/tokens/:ownerid/:id",oriUri)
+      resultparams=apiutil.get_uri_params("/core/tokens/:ownerid/:id",oriUri,params)
       --如果用户退出登录 则删除最后一次的token 以及改变用户登录状态为未登录
-      if temp_params then
-        params=utils.table_merge(temp_params,params)
-        tokenutil.delete_token(params)
-        ownerutil.owner_logout(params["ownerid"])
+      if resultparams then
+        tokenutil.delete_token(resultparams)
+        ownerutil.owner_logout(resultparams["ownerid"])
         return responses.send_HTTP_OK("删除成功")
       end 
     end
@@ -191,6 +189,9 @@ function KeyAuthHandler:access(conf)
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("token有误缺少tokenid信息")
       end
 
+
+
+
       --则根据token的id对应的scopes数据判断是否有此接口的权限，
       --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
       --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
@@ -212,11 +213,15 @@ function KeyAuthHandler:access(conf)
             flag=true
           end
        end
+
+
+
        
       if flag then
         local from, _, err
-        --如果token的格式正确，url为token的增删改查，则在本地处理数据库
-        from, _, err = ngx.re.find(ngx.var.uri, [[\/api\/token]], "oj")
+        local resultparams
+        --1.token的增删改查，则在本地处理数据库
+        from, _, err = ngx.re.find(oriUri, [[\/api\/token]], "oj")
 
         if from then
           if method=="POST" then
@@ -224,21 +229,20 @@ function KeyAuthHandler:access(conf)
           elseif method=="GET" then
             tokenutil.get_token(params)
           elseif method== "PATCH" then
-            tokenutil.updateToken(params)
+            tokenutil.updateToken(params,oriUri)
 
           elseif method=="DELETE" then
-            tokenutil.delete_token(params,false)
+            tokenutil.delete_token(params,false,oriUri)
           end
         end
 
-        --如果token的格式正确，url为token的定时刷新，则在本地处理数据库
-        temp_params=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri)
+        --2.token的定时刷新，则在本地处理数据库
+        local resultparams=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri,params)
 
         --判断url的ownerid与token中的ownerid是否一致
-        if temp_params then 
-          params=utils.table_merge(temp_params,params)
+        if resultparams then 
           --upatetoken之前先删除上一个token
-          tokenutil.delete_token(params,true)
+          tokenutil.delete_token(resultparams,true)
           generateSelfToken()
         end
 

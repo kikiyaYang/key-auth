@@ -33,7 +33,7 @@ end
 
 
 --获取url中的ownerid req.params的键值对
-_M.get_uri_params=function (pattern,uri)
+_M.get_uri_params=function (pattern,uri,origparams)
   local params = {}
 --如果pattern中无变量，则直接判断uri与pattern是否匹配
   if string.find(pattern,":",1) then
@@ -42,7 +42,9 @@ _M.get_uri_params=function (pattern,uri)
     local baseurl=_M.split(uri,"?")[1]
     local uri_vals = _M.split(baseurl,"/")
     local pattern_vals = _M.split(pattern,"/")
-
+    if #uri_vals ~= #pattern_vals then
+      return nil
+    end
     for i=1,#pattern_vals do
       
       local curstr = pattern_vals[i]
@@ -61,7 +63,7 @@ _M.get_uri_params=function (pattern,uri)
         end
       end
     end
-    return params
+    return utils.table_merge(origparams,params)
   end
 end
 

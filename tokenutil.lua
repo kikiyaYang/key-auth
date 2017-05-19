@@ -68,10 +68,11 @@ _M.get_usage=function(newScopes)
 end
 
 --params url参数 isupate，是否是updatetoken 如果是则删除成功后不返回 继续后面的代码，如果为false，则删除成功后返回
-_M.delete_token=function(params,isupdate)
-       
-  if params["id"] then
-    local tokenres, err = singletons.dao.keyauth_token:delete{id= params["id"]}
+--oriUri 为url，用于获取baseurl中的id
+_M.delete_token=function(params,isupdate,oriUri)
+  local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
+  if resultparams["id"] then
+    local tokenres, err = singletons.dao.keyauth_token:delete{id= resultparams["id"]}
     if tokenres then
       if not isupdate then
         return responses.send_HTTP_OK("删除token成功")
@@ -85,19 +86,21 @@ _M.delete_token=function(params,isupdate)
   end
 end
 
+--oriUri 为url，用于获取baseurl中的id
+_M.updateToken=function(params,oriUri)
+   local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
 
-_M.updateToken=function(params)
-   local token,err = singletons.dao.keyauth_token:find_all {id = params["id"]}
+   local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
    local newtoken = {}
-   if params["scopes"] then
-    newtoken["scopes"]=params["scopes"]
+   if resultparams["scopes"] then
+    newtoken["scopes"]=resultparams["scopes"]
   end
-  if params["note"] then
-    newtoken["note"]=params["note"]
+  if resultparams["note"] then
+    newtoken["note"]=resultparams["note"]
   end
 
-   newtoken["usage"]=_M.get_usage(params["scopes"])
-    local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = params["id"]})
+   newtoken["usage"]=_M.get_usage(resultparams["scopes"])
+    local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = resultparams["id"]})
     return responses.send_HTTP_OK(update_token)
 end
 
