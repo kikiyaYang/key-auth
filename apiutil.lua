@@ -36,7 +36,6 @@ end
 
 --获取url中的ownerid req.params的键值对
 _M.get_uri_params=function (pattern,uri,origparams)
-ngx.log(ngx.ERR,"+++"..pattern.."+++"..uri)
   local params = {}
 --如果pattern中无变量，则直接判断uri与pattern是否匹配
   if string.find(pattern,":",1) then

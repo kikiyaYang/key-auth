@@ -8,6 +8,7 @@ local tokenutil = require "kong.plugins.key-auth.tokenutil"
 local ownerutil = require "kong.plugins.key-auth.ownerutil"
 local utils = require "kong.tools.utils"
 
+local constants = require "kong.constants"
 
 local cjson = require "cjson.safe"
 
@@ -190,9 +191,6 @@ function KeyAuthHandler:access(conf)
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("token有误缺少tokenid信息")
       end
 
-
-
-
       --则根据token的id对应的scopes数据判断是否有此接口的权限，
       --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
       --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
@@ -214,9 +212,6 @@ function KeyAuthHandler:access(conf)
             flag=true
           end
        end
-
-
-
        
       if flag then
         local from, _, err
@@ -248,17 +243,18 @@ function KeyAuthHandler:access(conf)
         end
 
 
-        --如果token的格式正确，url为其他接口，
-        local redirect_base_url = apiutil.split(oriUri,"?")
+        --如果token的格式正确，url为其他接口，直接转发
 
-          ngx.req.set_uri(redirect_base_url[1])
+         ngx_set_header(constants.HEADERS.ANONYMOUS, true) -- in case of auth plugins concatenation
+
+
 
        else 
-         return  responses.send_HTTP_OK("该token无使用此url的权限")
+         return responses.send_HTTP_OK("该token无使用此url的权限")
        end
       end
 
-   return responses.send_HTTP_OK("nothing")
+   --return responses.send_HTTP_OK("nothing")
 end
 
 return KeyAuthHandler
