@@ -66,13 +66,19 @@ _M.get_uri_params=function (pattern,uri,origparams)
       end
     end
     local ownerid = params["ownerid"]
-    if ownerid and origparams["ownerid"] then
-      if ownerid~=origparams["ownerid"] then
-        return responses.send_HTTP_OK("token的ownerid与接口不一致")
+    if origparams then
+      if ownerid and origparams["ownerid"] then
+        if ownerid~=origparams["ownerid"] then
+          return responses.send_HTTP_OK("token的ownerid与接口不一致")
+        end
       end
-    end
-    return utils.table_merge(origparams,params)
-  end
+      return utils.table_merge(origparams,params)
+     else 
+      return params
+     end
+   end
+
+  return nil
 end
 
 
@@ -132,8 +138,12 @@ end
 _M.getScope=function (uri,method)
 
   for key,value in pairs(constants) do
-    local from,err = ngx.re.find(uri, key, "oj")
-    if from then
+    local from,err = _M.get_uri_params(key,uri)
+
+
+    local baseurl=_M.split(uri,"?")[1]
+
+    if from or key==baseurl then
       for subkey,subvalue in pairs(value) do
         local has,suberr = ngx.re.find(subkey,method,"oj")
         if has then
