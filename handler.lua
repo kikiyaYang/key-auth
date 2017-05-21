@@ -33,17 +33,16 @@ end
 
 
 local function load_credential(keyid)
-  ngx.log(ngx.ERR,keyid.."+++")
 
   local creds, err = singletons.dao.keyauth_token:find_all {
     id = keyid
   }
 
   if err then
-    return responses.send_HTTP_OK(err)
+    return responses.send(401,err)
   end
 
-  if not creds then
+  if (not creds) or (not creds[1]) then
     return nil, err
   end
 
@@ -143,9 +142,7 @@ function generateSelfToken(params)
 
 function checkRedirect(oriUri,pattern)
     local from, _, err = ngx.re.find(oriUri,pattern, "oj")
-    if from then
-        ngx.req.set_uri(ngx.ctx.uri)
-    end 
+    return from
 end
 
  
@@ -154,107 +151,134 @@ function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
 
-  --所有参数
-  params = apiutil.retrieve_parameters()
-  local method= ngx.req.get_method()
   local oriUri=apiutil.split(ngx.req.raw_header()," ")[2]
+  local tempStaticurl=string.reverse(oriUri)
+  local static_table = {"sj.","ssc.","oci.","gnp.","gpj.","ftt.","ssel.","nosj.","xsj."}
+  local flag = false
+  local i 
+  for i = 1,#static_table do
+    local static_index,static_end = string.find(tempStaticurl,static_table[i],1)
+    if static_index==1 then
+      flag=true
+      break
+    end
+  end
 
 
   --处理登录注册和查询所有scope,此时不需要token和ownerid，直接转发
-  checkRedirect(oriUri,[[\/login]])
-  checkRedirect(oriUri,[[\/scopes]])
+  local uri_table = {[[\/login]],[[\/scopes]],[[socket.io]]}
+  local uri_flag=false
+  for i = 1,#uri_table do
+    local from = checkRedirect(oriUri,uri_table[i])
+    if from then
+      uri_flag=true
+      break
+    end
+  end
 
 
-  --登陆后第一次生成用户token，以及退出时删除token
-  checkpropToken(method,oriUri)
+
+  if not ((oriUri=="/") or flag or uri_flag) then
+   
+    local method= ngx.req.get_method()
+
+    --所有参数
+    params = apiutil.retrieve_parameters()
+
+    --登陆后第一次生成用户token，以及退出时删除token
+    checkpropToken(method,oriUri)
 
 
-  --其他接口都必须带上token参数，从token参数中获取tokenid和ownerid
-  local token = params["token"]
+    --其他接口都必须带上token参数，从token参数中获取tokenid和ownerid
+    local token = params["token"]
 
-  local tokenObj = {}
+    local tokenObj = {}
 
     --除了登录注册和查询所有scopes 其他的uri必须带token参数
+
     if not token then
       --如果无token参数则报错
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("参数有误缺少token")
-    else
+        return responses.send(403,"参数有误缺少token")
+    else 
       --如果有token参数，先判断token的格式是否正确
-      local tokenObj=tokenutil.get_tokenAgent(token)
-      params["ownerid"]=tokenObj["u"]
-      params["id"]=tokenObj["a"]
-      if not params["ownerid"] then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("token有误缺少ownerid信息")
-      end
-
-      if not params["id"] then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("token有误缺少tokenid信息")
-      end
-
-      --则根据token的id对应的scopes数据判断是否有此接口的权限，
-      --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
-      --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
-    
-      local scopes=load_credential(params["id"])
-      params["scopes"]=scopes
-
-      local myscopes=apiutil.getScope(oriUri,method)
-      local myscopesArr = apiutil.split(myscopes,",")
-
-      --根据接口参数token中的scopes与constant文件中的scope比对，判断是否有使用权限
-      local flag = false
-      for i = 1, #myscopesArr do
-          local index = string.find(scopes,myscopesArr[i], 1)
-
-          if not index then
-            break
-          elseif i==#myscopesArr then
-            flag=true
-          end
-       end
-       
-      if flag then
-        local from, _, err
-        local resultparams
-        --1.token的增删改查，则在本地处理数据库
-        from, _, err = ngx.re.find(oriUri, [[\/api\/token]], "oj")
-
-        if from then
-          if method=="POST" then
-            tokenutil.issue_token(params)
-          elseif method=="GET" then
-            tokenutil.get_token(params)
-          elseif method== "PATCH" then
-            tokenutil.updateToken(params,oriUri)
-
-          elseif method=="DELETE" then
-            tokenutil.delete_token(params,false,oriUri)
-          end
+     
+        local tokenObj=tokenutil.get_tokenAgent(token)
+        params["ownerid"]=tokenObj["u"]
+        params["id"]=tokenObj["a"]
+        if not params["ownerid"] then
+          return responses.send(403,"token有误缺少ownerid信息")
         end
 
-        --2.token的定时刷新，则在本地处理数据库
-        local resultparams=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri,params)
-
-        --判断url的ownerid与token中的ownerid是否一致
-        if resultparams then 
-          --upatetoken之前先删除上一个token
-          tokenutil.delete_token(resultparams,true,oriUri)
-          generateSelfToken(resultparams)
+        if not params["id"] then
+          return responses.send(403,"token有误缺少tokenid信息")
         end
+
+        --则根据token的id对应的scopes数据判断是否有此接口的权限，
+        --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
+        --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
+      
+        local scopes=load_credential(params["id"])
+        params["scopes"]=scopes
+
+        local myscopes=apiutil.getScope(oriUri,method)
+        local myscopesArr = apiutil.split(myscopes,",")
+
+        --根据接口参数token中的scopes与constant文件中的scope比对，判断是否有使用权限
+        local flag = false
+        for i = 1, #myscopesArr do
+            local index = string.find(scopes,myscopesArr[i], 1)
+
+            if not index then
+              break
+            elseif i==#myscopesArr then
+              flag=true
+            end
+         end
+         
+        if flag then
+          local from, _, err
+          local resultparams
+          --1.token的增删改查，则在本地处理数据库
+          from, _, err = ngx.re.find(oriUri, [[\/api\/token]], "oj")
+
+          if from then
+            if method=="POST" then
+              tokenutil.issue_token(params)
+            elseif method=="GET" then
+              tokenutil.get_token(params)
+            elseif method== "PATCH" then
+              tokenutil.updateToken(params,oriUri)
+
+            elseif method=="DELETE" then
+              tokenutil.delete_token(params,false,oriUri)
+            end
+          end
+
+          --2.token的定时刷新，则在本地处理数据库
+          local resultparams=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri,params)
+
+          --判断url的ownerid与token中的ownerid是否一致
+          if resultparams then 
+            --upatetoken之前先删除上一个token
+            tokenutil.delete_token(resultparams,true,oriUri)
+            generateSelfToken(resultparams)
+          end
+        
 
 
         --如果token的格式正确，url为其他接口，直接转发
-
          ngx_set_header(constants.HEADERS.ANONYMOUS, true) -- in case of auth plugins concatenation
 
 
 
        else 
-         return responses.send_HTTP_OK("该token无使用此url的权限")
+         return responses.send(401,"该token无使用此url的权限")
        end
-      end
+     end 
+   end
 
-   --return responses.send_HTTP_OK("nothing")
-end
+  end
+
+
 
 return KeyAuthHandler

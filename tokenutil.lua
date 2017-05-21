@@ -14,36 +14,37 @@ local _M = {}
 _M.issue_token=function(params)
   
   --判断是否有权限
+  if(params["scopes"]) then
+    local isvalid = string.find(params["scopes"],"tokens:write",1)
+    if isvalid then
+      local id= utils.uuid()
 
-  local isvalid = string.find(params["scopes"],"tokens:write",1)
-  if isvalid then
-    local id= utils.uuid()
-
-    if not params["usage"] then
-      params["usage"]= _M.get_usage(params["scopes"])     
-    end
-
-    local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
-    local tokenres, err = singletons.dao.keyauth_token:insert({
-      id = id,
-      ownerid=params["ownerid"],
-      scopes =params["scopes"],
-      note=params["note"],
-      usage=params["usage"],
-      token=tokenVal
-      })
-      if params["selfuse"] then
-        if tokenres then
-          return tokenres
-        else 
-          return responses.send_HTTP_OK(err)
-        end 
-      else
-        return ((not err) and responses.send_HTTP_OK(tokenres)) or responses.send_HTTP_OK("新建token出错")
+      if not params["usage"] then
+        params["usage"]= _M.get_usage(params["scopes"])     
       end
-    else 
-      return responses.send_HTTP_OK("此token不包含新增token的权限")
-    end
+
+      local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
+      local tokenres, err = singletons.dao.keyauth_token:insert({
+        id = id,
+        ownerid=params["ownerid"],
+        scopes =params["scopes"],
+        note=params["note"],
+        usage=params["usage"],
+        token=tokenVal
+        })
+        if params["selfuse"] then
+          if tokenres then
+            return tokenres
+          else 
+            return responses.send_HTTP_OK(err)
+          end 
+        else
+          return ((not err) and responses.send_HTTP_OK(tokenres)) or responses.send_HTTP_OK("新建token出错")
+        end
+      else 
+        return responses.send_HTTP_OK("此token不包含新增token的权限")
+      end
+  end 
 end
 
 --根据当前所有的scopes的name查找scope表，判断usage是公有还是私有类型
@@ -67,7 +68,8 @@ _M.get_usage=function(newScopes)
   else
     return responses.send_HTTP_OK("scope格式出错")
   end        
-  return (usageFlag and "pk") or "sk"      
+  return (usageFlag and "pk") or "sk"    
+
 
 end
 

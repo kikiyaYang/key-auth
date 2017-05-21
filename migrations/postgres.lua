@@ -46,6 +46,7 @@ return {
         id text,
         status text,
         ownerid text,
+        paytype text,
         PRIMARY KEY (id)
       );
 
