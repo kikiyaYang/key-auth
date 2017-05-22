@@ -166,14 +166,18 @@ function KeyAuthHandler:access(conf)
 
 
   --处理登录注册和查询所有scope,此时不需要token和ownerid，直接转发
-  local uri_table = {[[\/login]],[[\/scopes]],[[socket.io]]}
+  local uri_table = {[[\/login]],[[\/api\/scope]],[[socket.io]]}
   local uri_flag=false
   for i = 1,#uri_table do
     local from = checkRedirect(oriUri,uri_table[i])
     if from then
-      uri_flag=true
+        if uri_table[i]==[[\/api\/scope]] then
+          tokenutil.findScope()
+        end 
+          uri_flag=true
       break
     end
+
   end
 
 

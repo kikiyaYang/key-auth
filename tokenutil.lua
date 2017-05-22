@@ -73,6 +73,14 @@ _M.get_usage=function(newScopes)
 
 end
 
+
+
+_M.findScope=function()
+  local pkscopes, pkerr = singletons.dao.keyauth_scope:find_all {public = true}
+  local skscopes, skerr = singletons.dao.keyauth_scope:find_all {public = false}
+
+  return responses.send_HTTP_OK(utils.table_merge(pkscopes,skscopes))
+end
 --params url参数 isupate，是否是updatetoken 如果是则删除成功后不返回 继续后面的代码，如果为false，则删除成功后返回
 --oriUri 为url，用于获取baseurl中的id
 _M.delete_token=function(params,isupdate,oriUri)
