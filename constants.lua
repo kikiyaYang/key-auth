@@ -1,7 +1,7 @@
 return {
       ["/api/token/:ownerid"]=
         {
-          ["GET"]="tokens:list",
+          ["GET"]="tokens:read",
           ["POST"]="tokens:write"
         },
         ["/api/token/:ownerid/:tokenid"]=
