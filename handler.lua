@@ -132,11 +132,10 @@ function generateSelfToken(params)
 
       local scopeStr = apiutil.generateScope(scopes_public,scopes)
       local ownerid = params['ownerid']
-      local tokenParams = {["selfuse"]=true,["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid,["usage"]="sk"}
+      local tokenParams = {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid,["usage"]="sk"}
 
-      local tokenRes=tokenutil.issue_token(tokenParams)
+      tokenutil.issue_token(tokenParams)
 
-      return responses.send_HTTP_OK(apiutil.generateToken("sk",ownerid,tokenRes["id"]))
     end 
 
 
@@ -183,7 +182,7 @@ function KeyAuthHandler:access(conf)
 
 
   if not ((oriUri=="/") or flag or uri_flag) then
-   
+
     local method= ngx.req.get_method()
 
     --所有参数
@@ -221,6 +220,7 @@ function KeyAuthHandler:access(conf)
         --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
         --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
       
+
         local scopes=load_credential(params["id"])
         params["scopes"]=scopes
 
@@ -238,6 +238,7 @@ function KeyAuthHandler:access(conf)
               flag=true
             end
          end
+
          
         if flag then
           local from, _, err
@@ -264,8 +265,8 @@ function KeyAuthHandler:access(conf)
           --判断url的ownerid与token中的ownerid是否一致
           if resultparams then 
             --upatetoken之前先删除上一个token
-            tokenutil.delete_token(resultparams,true,oriUri)
-            generateSelfToken(resultparams)
+            --generateSelfToken(resultparams)
+            tokenutil.updateToken(resultparams,oriUri)
           end
         
 

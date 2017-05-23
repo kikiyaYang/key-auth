@@ -12,7 +12,6 @@ local _M = {}
 
 --新增token 参数结构 {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid},usageParam(如果传入则用此参数，此参数不传，则usage取之于前一个params)
 _M.issue_token=function(params)
-  
   --判断是否有权限
   if(params["scopes"]) then
     local isvalid = string.find(params["scopes"],"tokens:write",1)
@@ -32,15 +31,8 @@ _M.issue_token=function(params)
         usage=params["usage"],
         token=tokenVal
         })
-        if params["selfuse"] then
-          if tokenres then
-            return tokenres
-          else 
-            return responses.send_HTTP_OK(err)
-          end 
-        else
-          return ((not err) and responses.send_HTTP_OK(tokenres)) or responses.send_HTTP_OK("新建token出错")
-        end
+
+        return ((not err) and responses.send_HTTP_OK(tokenVal)) or responses.send(403,err)
       else 
         return responses.send_HTTP_OK("此token不包含新增token的权限")
       end
@@ -103,23 +95,30 @@ end
 
 --oriUri 为url，用于获取baseurl中的id
 _M.updateToken=function(params,oriUri)
-   local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
-
-   local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
    local newtoken = {}
-   if resultparams["scopes"] then
-    newtoken["scopes"]=resultparams["scopes"]
-    newtoken["usage"]=_M.get_usage(resultparams["scopes"])
-    newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["id"],resultparams["ownerid"])
-  end
-  if resultparams["note"] then
-    newtoken["note"]=resultparams["note"]
-  end
+   local updateid
+   if ngx.re.find(oriUri,"/api/token","oj") then
+       local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
 
+       local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
+       if resultparams["scopes"] then
+          newtoken["scopes"]=resultparams["scopes"]
+          newtoken["usage"]=_M.get_usage(resultparams["scopes"])
+          newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["ownerid"],resultparams["id"])
+          updateid=resultparams["id"]
+      end
+      if resultparams["note"] then
+        newtoken["note"]=resultparams["note"]
+      end
+    elseif ngx.re.find(oriUri,"/upload/tokens","oj") then
+      local newtokens=singletons.dao.keyauth_token:find_all{token=params["token"]}
+      newtoken=newtokens[1]
+      newtoken["token"]=apiutil.generateToken(newtoken["usage"],newtoken["ownerid"],newtoken["id"])
+      updateid=newtoken["id"]
+    end
 
-
-    local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = resultparams["id"]})
-    return responses.send_HTTP_OK(update_token)
+    local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = updateid})
+    return responses.send_HTTP_OK(update_token["token"])
 end
 
 
