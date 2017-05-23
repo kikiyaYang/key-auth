@@ -9,6 +9,10 @@ return {
           ["GET"]="tokens:read",
           ["PUT,PATCH,DELETE"]="tokens:write"
         },
+         ["/api/scope/:ownerid"]=
+        {
+          ["GET"]="scopes:list"
+        },
         ["/styles/:ownerid"]=
         {
           ["GET"]="styles:list",

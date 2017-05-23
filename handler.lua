@@ -106,7 +106,7 @@ function checkpropToken(method,oriUri)
   local resultparams
   if method=="GET" then
 
-      resultparams=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri,params)
+      resultparams=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri)
       --登录成功后生成token以后，记录用户状态为已登录
       if resultparams then
         ownerutil.owner_login(resultparams["ownerid"])
@@ -165,14 +165,11 @@ function KeyAuthHandler:access(conf)
 
 
   --处理登录注册和查询所有scope,此时不需要token和ownerid，直接转发
-  local uri_table = {[[\/login]],[[\/api\/scope]],[[socket.io]]}
+  local uri_table = {[[\/login]],[[socket.io]]}
   local uri_flag=false
   for i = 1,#uri_table do
     local from = checkRedirect(oriUri,uri_table[i])
     if from then
-        if uri_table[i]==[[\/api\/scope]] then
-          tokenutil.findScope()
-        end 
           uri_flag=true
       break
     end
@@ -243,6 +240,13 @@ function KeyAuthHandler:access(conf)
         if flag then
           local from, _, err
           local resultparams
+           --1.scope的获取
+          from, _, err = ngx.re.find(oriUri, [[\/api\/scope]], "oj")
+          if from then
+              tokenutil.findScope()
+          end
+
+
           --1.token的增删改查，则在本地处理数据库
           from, _, err = ngx.re.find(oriUri, [[\/api\/token]], "oj")
 

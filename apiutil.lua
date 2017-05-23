@@ -72,7 +72,8 @@ _M.get_uri_params=function (pattern,uri,origparams)
           return responses.send_HTTP_OK("token的ownerid与接口不一致")
         end
       end
-      return utils.table_merge(origparams,params)
+      local restable = utils.table_merge(origparams,params)
+      return restable
      else 
       return params
      end
