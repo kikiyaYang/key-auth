@@ -32,7 +32,7 @@ end
 
 
 
-local function load_credential(keyid)
+local function  load_credential(keyid)
 
   local creds, err = singletons.dao.keyauth_token:find_all {
     id = keyid
@@ -134,7 +134,7 @@ function generateSelfToken(params)
       local ownerid = params['ownerid']
       local tokenParams = {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid,["usage"]="sk"}
 
-      tokenutil.issue_token(tokenParams)
+      tokenutil.issue_token(tokenParams,true)
 
     end 
 
@@ -216,10 +216,8 @@ function KeyAuthHandler:access(conf)
         --则根据token的id对应的scopes数据判断是否有此接口的权限，
         --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
         --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
-      
-
         local scopes=load_credential(params["id"])
-        params["scopes"]=scopes
+        --params["scopes"]=scopes
 
         local myscopes=apiutil.getScope(oriUri,method)
         local myscopesArr = apiutil.split(myscopes,",")
@@ -247,12 +245,12 @@ function KeyAuthHandler:access(conf)
           end
 
 
-          --1.token的增删改查，则在本地处理数据库
+          --2.token的增删改查，则在本地处理数据库
           from, _, err = ngx.re.find(oriUri, [[\/api\/token]], "oj")
 
           if from then
             if method=="POST" then
-              tokenutil.issue_token(params)
+              tokenutil.issue_token(params,false)
             elseif method=="GET" then
               tokenutil.get_token(params)
             elseif method== "PATCH" then
@@ -263,22 +261,18 @@ function KeyAuthHandler:access(conf)
             end
           end
 
-          --2.token的定时刷新，则在本地处理数据库
+          --3.token的定时刷新，则在本地处理数据库
           local resultparams=apiutil.get_uri_params("/upload/tokens/:ownerid",oriUri,params)
-
           --判断url的ownerid与token中的ownerid是否一致
           if resultparams then 
-            --upatetoken之前先删除上一个token
-            --generateSelfToken(resultparams)
+           
             tokenutil.updateToken(resultparams,oriUri)
           end
         
 
 
-        --如果token的格式正确，url为其他接口，直接转发
+        --4.如果token的格式正确，url为其他接口，直接转发
          ngx_set_header(constants.HEADERS.ANONYMOUS, true) -- in case of auth plugins concatenation
-
-
 
        else 
          return responses.send(401,"该token无使用此url的权限")

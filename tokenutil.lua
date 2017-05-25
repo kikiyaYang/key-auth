@@ -8,33 +8,56 @@ local cjson = require "cjson.safe"
 
 
 
+
+
 local _M = {}
 
 --新增token 参数结构 {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid},usageParam(如果传入则用此参数，此参数不传，则usage取之于前一个params)
-_M.issue_token=function(params)
+_M.issue_token=function(params,isSelfTokenFlag)
+
   --判断是否有权限
   if(params["scopes"]) then
     local isvalid = string.find(params["scopes"],"tokens:write",1)
     if isvalid then
-      local id= utils.uuid()
-
+      
       if not params["usage"] then
         params["usage"]= _M.get_usage(params["scopes"])     
       end
 
       local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
-      local tokenres, err = singletons.dao.keyauth_token:insert({
-        id = id,
-        ownerid=params["ownerid"],
-        scopes =params["scopes"],
-        note=params["note"],
-        usage=params["usage"],
-        token=tokenVal
-        })
 
-        return ((not err) and responses.send_HTTP_OK(tokenVal)) or responses.send(403,err)
+      local newtoken = {}
+      newtoken["scopes"]=params["scopes"]
+      newtoken["usage"]=params["usage"]
+      newtoken["note"]=params["note"]
+      newtoken["ownerid"]=params["ownerid"]
+      newtoken["is_self_token"]=isSelfTokenFlag
+
+
+
+      --已有自身全部scope的token 则只更新
+      if isSelfTokenFlag then
+
+        local oritoken,err = singletons.dao.keyauth_token:find_all{is_self_token=true,ownerid=params["ownerid"]}
+        if #oritoken>0 then  
+          newtoken["id"]=oritoken[1]["id"]
+  
+          newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
+          singletons.dao.keyauth_token:update(newtoken,{id=newtoken["id"]})  
+          return responses.send_HTTP_OK(newtoken["token"])
+        end
+       end
+
+
+       --其他请求均为新增
+        newtoken["id"]=utils.uuid()
+        newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
+        newtoken["default_token"]=false
+        local tokenres, err = singletons.dao.keyauth_token:insert(newtoken)
+     
+        return ((not err) and responses.send_HTTP_OK((isSelfTokenFlag and newtoken["token"]) or newtoken)) or responses.send(403,err)
       else 
-        return responses.send_HTTP_OK("此token不包含新增token的权限")
+        return responses.send(403,"此token不包含新增token的权限")
       end
   end 
 end
@@ -47,12 +70,13 @@ _M.get_usage=function(newScopes)
   local myscopes = utils.split(newScopes,",")
   if myscopes then 
     for i=1,#myscopes do
-       local credentials, err = singletons.dao.keyauth_scope:find_all {name = myscopes[i]}
-        if err then 
+       local credentials, err = singletons.dao.keyauth_scope:find_all{name = myscopes[i]}
+        if err then   
           return responses.send_HTTP_OK("scope格式出错")
         end
+        ngx.log(ngx.ERR,myscopes[i].."++"..cjson.encode(credentials))
 
-        if not credentials[1].public then
+        if credentials[1] and (not credentials[1].public) then
           usageFlag=false
           break
         end
@@ -111,7 +135,7 @@ _M.updateToken=function(params,oriUri)
         newtoken["note"]=resultparams["note"]
       end
     elseif ngx.re.find(oriUri,"/upload/tokens","oj") then
-      local newtokens=singletons.dao.keyauth_token:find_all{token=params["token"]}
+      local newtokens,err=singletons.dao.keyauth_token:find_all{token=params["token"]}
       newtoken=newtokens[1]
       newtoken["token"]=apiutil.generateToken(newtoken["usage"],newtoken["ownerid"],newtoken["id"])
       updateid=newtoken["id"]
@@ -126,17 +150,16 @@ end
 _M.get_token=function(params)
 
     --判断是否有权限
-    local token,err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"]}
-    if token then           
-      local isvalid = string.find(token[1]["scopes"],"tokens:read",1)
-      if isvalid then
-        local credentials, err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"]}
-        return responses.send_HTTP_OK(credentials)
-      else 
-        return responses.send_HTTP_OK("此token不包含查看所有token的权限")
-      end
+    local tokens,err = singletons.dao.keyauth_token:find_all {ownerid = params["ownerid"],is_self_token= false}
+    if not err then           
+      --local isvalid = string.find(token[1]["scopes"],"tokens:read",1)
+      --if isvalid then
+      return responses.send_HTTP_OK(tokens)
+      -- else 
+      --   return responses.send_HTTP_OK("此token不包含查看所有token的权限")
+      -- end
     else 
-      return responses.send_HTTP_OK("token有误")
+      return responses.send(403,err)
     end
 end
 

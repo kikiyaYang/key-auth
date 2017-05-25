@@ -12,7 +12,9 @@ local SCHEMA = {
     ownerid = {type = "string", required = true},
     usage = {type = "string", required = false},
     token = {type = "string", required = true},
-    scopes = { type = "string", required = true}
+    scopes = { type = "string", required = true},
+    is_self_token={type="bool",required=false,default=true},
+    default_token={type="bool",required=false,default=false}
   },
   marshall_event = function(self, t)
     return {id = t.id}

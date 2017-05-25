@@ -11,6 +11,8 @@ return {
         ownerid text,
         usage text,
         token text,
+        is_self_token bool,
+        default_token bool,
         scopes text,
         PRIMARY KEY (id)
       );
