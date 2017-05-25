@@ -15,51 +15,47 @@ local _M = {}
 --新增token 参数结构 {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid},usageParam(如果传入则用此参数，此参数不传，则usage取之于前一个params)
 _M.issue_token=function(params,isSelfTokenFlag)
 
-  --判断是否有权限
-  if(params["scopes"]) then
-    local isvalid = string.find(params["scopes"],"tokens:write",1)
-    if isvalid then
-      
-      if not params["usage"] then
-        params["usage"]= _M.get_usage(params["scopes"])     
-      end
 
-      local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
+    if not params["usage"] then
+      params["usage"]= _M.get_usage(params["newscopes"])     
+    end
 
-      local newtoken = {}
-      newtoken["scopes"]=params["scopes"]
-      newtoken["usage"]=params["usage"]
-      newtoken["note"]=params["note"]
-      newtoken["ownerid"]=params["ownerid"]
-      newtoken["is_self_token"]=isSelfTokenFlag
+    local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
+
+    local newtoken = {}
+    newtoken["scopes"]=params["newscopes"]
+    newtoken["usage"]=params["usage"]
+    newtoken["note"]=params["note"]
+    newtoken["ownerid"]=params["ownerid"]
+    newtoken["is_self_token"]=isSelfTokenFlag
 
 
 
-      --已有自身全部scope的token 则只更新
-      if isSelfTokenFlag then
+    --已有自身全部scope的token 则只更新
+    if isSelfTokenFlag then
 
-        local oritoken,err = singletons.dao.keyauth_token:find_all{is_self_token=true,ownerid=params["ownerid"]}
-        if #oritoken>0 then  
-          newtoken["id"]=oritoken[1]["id"]
-  
-          newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
-          singletons.dao.keyauth_token:update(newtoken,{id=newtoken["id"]})  
-          return responses.send_HTTP_OK(newtoken["token"])
-        end
-       end
+      local oritoken,err = singletons.dao.keyauth_token:find_all{is_self_token=true,ownerid=params["ownerid"]}
+      if #oritoken>0 then  
+        newtoken["id"]=oritoken[1]["id"]
 
-
-       --其他请求均为新增
-        newtoken["id"]=utils.uuid()
         newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
-        newtoken["default_token"]=false
-        local tokenres, err = singletons.dao.keyauth_token:insert(newtoken)
-     
-        return ((not err) and responses.send_HTTP_OK((isSelfTokenFlag and newtoken["token"]) or newtoken)) or responses.send(403,err)
-      else 
-        return responses.send(403,"此token不包含新增token的权限")
+        singletons.dao.keyauth_token:update(newtoken,{id=newtoken["id"]})  
+        return responses.send_HTTP_OK(newtoken["token"])
       end
-  end 
+     end
+
+
+     --其他请求均为新增
+      newtoken["id"]=utils.uuid()
+      newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
+      newtoken["default_token"]=false
+            ngx.log(ngx.ERR,cjson.encode(newtoken).."++++++")
+
+      local tokenres, err = singletons.dao.keyauth_token:insert(newtoken)
+   
+      return ((not err) and responses.send_HTTP_OK((isSelfTokenFlag and newtoken["token"]) or newtoken)) or responses.send(403,err)
+
+
 end
 
 --根据当前所有的scopes的name查找scope表，判断usage是公有还是私有类型
