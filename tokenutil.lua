@@ -116,21 +116,25 @@ end
 --oriUri 为url，用于获取baseurl中的id
 _M.updateToken=function(params,oriUri)
    local newtoken = {}
-   local updateid
+   local updateid,flag
+
    if ngx.re.find(oriUri,"/api/token","oj") then
+       flag=true
        local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
 
-       local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
-       if resultparams["scopes"] then
-          newtoken["scopes"]=resultparams["scopes"]
-          newtoken["usage"]=_M.get_usage(resultparams["scopes"])
+       --local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
+       if resultparams["newscopes"] then
+          newtoken["scopes"]=resultparams["newscopes"]
+          newtoken["usage"]=_M.get_usage(resultparams["newscopes"])
           newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["ownerid"],resultparams["id"])
           updateid=resultparams["id"]
       end
       if resultparams["note"] then
         newtoken["note"]=resultparams["note"]
       end
+
     elseif ngx.re.find(oriUri,"/upload/tokens","oj") then
+      flag=false
       local newtokens,err=singletons.dao.keyauth_token:find_all{token=params["token"]}
       newtoken=newtokens[1]
       newtoken["token"]=apiutil.generateToken(newtoken["usage"],newtoken["ownerid"],newtoken["id"])
@@ -138,7 +142,7 @@ _M.updateToken=function(params,oriUri)
     end
 
     local update_token, err = singletons.dao.keyauth_token:update(newtoken,{id = updateid})
-    return responses.send_HTTP_OK(update_token["token"])
+    return responses.send_HTTP_OK((flag and update_token) or update_token["token"])
 end
 
 

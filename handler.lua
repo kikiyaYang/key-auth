@@ -184,7 +184,6 @@ function KeyAuthHandler:access(conf)
 
     --所有参数
     params = apiutil.retrieve_parameters()
-    ngx.log(ngx.ERR,cjson.encode(params).."++++++")
 
     --登陆后第一次生成用户token，以及退出时删除token
     checkpropToken(method,oriUri)
@@ -251,6 +250,7 @@ function KeyAuthHandler:access(conf)
 
           if from then
             if method=="POST" then
+              
               tokenutil.issue_token(params,false)
             elseif method=="GET" then
               tokenutil.get_token(params)
