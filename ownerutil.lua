@@ -1,3 +1,5 @@
+
+
 local utils = require "kong.tools.utils"
 local constants=require "kong.plugins.key-auth.constants"
 local apiutil = require "kong.plugins.key-auth.apiutil"
@@ -5,6 +7,7 @@ local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
 local crypto = require "crypto"
 local cjson = require "cjson.safe"
+local role_privlleges = "kong.plugins.key-auth.role"
 
 
 
@@ -25,6 +28,27 @@ _M.owner_login=function(eid)
   end
 
 end
+
+
+
+
+  _M.getUserPayInfo=function ( ownerid )
+    if ownerid then
+      local  owners,err = singletons.dao.ent:find_all{id=ownerid}
+      local  owner = owners[1]
+      if owner and (not owner.type) then
+        return "primary"
+      else 
+        return owner["paytype"]
+      end
+         
+
+    end
+
+    
+  end
+
+
 
 
 _M.owner_logout=function (ownerid)

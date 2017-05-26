@@ -41,6 +41,9 @@ _M.issue_token=function(params,isSelfTokenFlag)
         newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
         singletons.dao.keyauth_token:update(newtoken,{id=newtoken["id"]})  
         return responses.send_HTTP_OK(newtoken["token"])
+
+      else
+        newtoken["scopes"]=params["scopes"]
       end
      end
 
@@ -49,8 +52,7 @@ _M.issue_token=function(params,isSelfTokenFlag)
       newtoken["id"]=utils.uuid()
       newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
       newtoken["default_token"]=false
-            ngx.log(ngx.ERR,cjson.encode(newtoken).."++++++")
-
+    
       local tokenres, err = singletons.dao.keyauth_token:insert(newtoken)
    
       return ((not err) and responses.send_HTTP_OK((isSelfTokenFlag and newtoken["token"]) or newtoken)) or responses.send(403,err)

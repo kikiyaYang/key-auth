@@ -150,9 +150,11 @@ function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
 
+  --静态资源直接转发
   local oriUri=apiutil.split(ngx.req.raw_header()," ")[2]
-  local tempStaticurl=string.reverse(oriUri)
-  local static_table = {"sj.","ssc.","oci.","gnp.","gpj.","ftt.","ssel.","nosj.","xsj."}
+  local base_url=apiutil.split(oriUri,"?")[1]
+  local tempStaticurl=string.reverse(base_url)
+  local static_table = {"sj.","ssc.","oci.","gnp.","gpj.","ftt.","ssel.","nosj.","xsj.","selitbm.","statsnosj","pam."}
   local flag = false
   local i 
   for i = 1,#static_table do
@@ -162,6 +164,8 @@ function KeyAuthHandler:access(conf)
       break
     end
   end
+
+
 
 
   --处理登录注册和查询所有scope,此时不需要token和ownerid，直接转发
@@ -250,7 +254,7 @@ function KeyAuthHandler:access(conf)
 
           if from then
             if method=="POST" then
-              
+
               tokenutil.issue_token(params,false)
             elseif method=="GET" then
               tokenutil.get_token(params)
