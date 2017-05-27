@@ -35,12 +35,12 @@ _M.issue_token=function(params,isSelfTokenFlag)
     if isSelfTokenFlag then
 
       local oritoken,err = singletons.dao.keyauth_token:find_all{is_self_token=true,ownerid=params["ownerid"]}
-      if #oritoken>0 then  
+      if  #oritoken>0 then  
         newtoken["id"]=oritoken[1]["id"]
 
         newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
         singletons.dao.keyauth_token:update(newtoken,{id=newtoken["id"]})  
-        return responses.send_HTTP_OK(newtoken["token"])
+        return responses.send_HTTP_OK(newtoken)
 
       else
         newtoken["scopes"]=params["scopes"]
