@@ -55,7 +55,7 @@ _M.issue_token=function(params,isSelfTokenFlag)
     
       local tokenres, err = singletons.dao.keyauth_token:insert(newtoken)
    
-      return ((not err) and responses.send_HTTP_OK((isSelfTokenFlag and newtoken["token"]) or newtoken)) or responses.send(403,err)
+      return ((not err) and responses.send_HTTP_OK(newtoken)) or responses.send(403,err)
 
 
 end
@@ -97,22 +97,24 @@ _M.findScope=function()
 end
 --params url参数 isupate，是否是updatetoken 如果是则删除成功后不返回 继续后面的代码，如果为false，则删除成功后返回
 --oriUri 为url，用于获取baseurl中的id
-_M.delete_token=function(params,isupdate,oriUri)
-  local uri_param = (isupdate and "/upload/tokens/:ownerid") or "/api/token/:ownerid/:id"
-  local resultparams=apiutil.get_uri_params(uri_param,oriUri,params)
-  if resultparams["id"] then
-    local tokenres, err = singletons.dao.keyauth_token:delete{id= resultparams["id"]}
-    if tokenres then
-      if not isupdate then
-        return responses.send_HTTP_OK("删除token成功")
-      end
-    end
-    if err then
-       return responses.send_HTTP_OK("删除token失败")
-     end
-  else 
-    return responses.send_HTTP_OK("缺少参数id")
+_M.delete_token=function(resultparams,islogin)
+  local tokenres, err
+  if resultparams["id"] and (not islogin) then
+    tokenres, err = singletons.dao.keyauth_token:delete{id= resultparams["tokenid"]}
   end
+
+  if islogin then
+    tokenres,err= singletons.dao.keyauth_token:find_all{ownerid= resultparams["ownerid"],is_self_token=true} 
+    if tokenres and ((#tokenres)>0) then
+      tokenres, err = singletons.dao.keyauth_token:delete{id= tokenres[1].id} 
+    end
+  end
+  if tokenres then
+    return responses.send_HTTP_OK("删除token成功")
+  end
+  if err then
+     return responses.send(403,"删除token失败")
+  end  
 end
 
 --oriUri 为url，用于获取baseurl中的id
@@ -122,14 +124,14 @@ _M.updateToken=function(params,oriUri)
 
    if ngx.re.find(oriUri,"/api/token","oj") then
        flag=true
-       local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:id",oriUri,params)
+       local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:tokenid",oriUri,params)
 
        --local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
        if resultparams["newscopes"] then
           newtoken["scopes"]=resultparams["newscopes"]
           newtoken["usage"]=_M.get_usage(resultparams["newscopes"])
-          newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["ownerid"],resultparams["id"])
-          updateid=resultparams["id"]
+          newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["ownerid"],resultparams["tokenid"])
+          updateid=resultparams["tokenid"]
       end
       if resultparams["note"] then
         newtoken["note"]=resultparams["note"]

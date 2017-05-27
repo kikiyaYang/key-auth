@@ -109,17 +109,16 @@ function checkpropToken(method,oriUri)
       resultparams=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri)
       --登录成功后生成token以后，记录用户状态为已登录
       if resultparams then
-        ownerutil.owner_login(resultparams["ownerid"])
+        --ownerutil.owner_login(resultparams["ownerid"])
         generateSelfToken(resultparams)
       end 
 
     elseif method=="DELETE" then
-      resultparams=apiutil.get_uri_params("/core/tokens/:ownerid/:id",oriUri,params)
+      resultparams=apiutil.get_uri_params("/core/tokens/:ownerid",oriUri,params)
       --如果用户退出登录 则删除最后一次的token 以及改变用户登录状态为未登录
       if resultparams then
-        tokenutil.delete_token(resultparams)
-        ownerutil.owner_logout(resultparams["ownerid"])
-        return responses.send_HTTP_OK("删除成功")
+        tokenutil.delete_token(resultparams,true)
+        --ownerutil.owner_logout(resultparams["ownerid"])
       end 
     end
 end
@@ -198,7 +197,10 @@ function KeyAuthHandler:access(conf)
 
     local tokenObj = {}
 
-    --除了登录注册和查询所有scopes 其他的uri必须带token参数
+
+
+
+    --除了登录注册和 其他的uri必须带token和ownerid参数
 
     if not token then
       --如果无token参数则报错
@@ -209,13 +211,22 @@ function KeyAuthHandler:access(conf)
         local tokenObj=tokenutil.get_tokenAgent(token)
         params["ownerid"]=tokenObj["u"]
         params["id"]=tokenObj["a"]
+
+
         if not params["ownerid"] then
           return responses.send(403,"token有误缺少ownerid信息")
+
+        --url中是否包含token中的ownerid ，检查ownerid是否一致
+        elseif not ngx.re.find(oriUri,"/"..params["ownerid"],"oj") then
+          return responses.send(403,"url中的ownerid与token中的ownerid不一致")
         end
 
         if not params["id"] then
           return responses.send(403,"token有误缺少tokenid信息")
         end
+
+
+
 
         --则根据token的id对应的scopes数据判断是否有此接口的权限，
         --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
@@ -262,7 +273,10 @@ function KeyAuthHandler:access(conf)
               tokenutil.updateToken(params,oriUri)
 
             elseif method=="DELETE" then
-              tokenutil.delete_token(params,false,oriUri)
+              resultparams=apiutil.get_uri_params("/api/token/:ownerid/:tokenid",oriUri,params)
+              if resultparams then
+                tokenutil.delete_token(resultparams,false)
+              end
             end
           end
 
