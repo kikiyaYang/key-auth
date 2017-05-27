@@ -69,7 +69,7 @@ _M.get_uri_params=function (pattern,uri,origparams)
     if origparams then
       if ownerid and origparams["ownerid"] then
         if ownerid~=origparams["ownerid"] then
-          return responses.send_HTTP_OK("token的ownerid与接口不一致")
+          return responses.send(403,"token的ownerid与接口不一致")
         end
       end
       local restable = utils.table_merge(origparams,params)
@@ -153,7 +153,7 @@ _M.getScope=function (uri,method)
       end
     end
   end
-  return responses.send_HTTP_OK("没有设置此接口的scope")
+  return responses.send(403,"没有设置此接口的scope")
 end
 
 

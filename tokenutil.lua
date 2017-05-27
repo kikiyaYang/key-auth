@@ -70,7 +70,7 @@ _M.get_usage=function(newScopes)
     for i=1,#myscopes do
        local credentials, err = singletons.dao.keyauth_scope:find_all{name = myscopes[i]}
         if err then   
-          return responses.send_HTTP_OK("scope格式出错")
+          return responses.send(403,"scope格式出错")
         end
         ngx.log(ngx.ERR,myscopes[i].."++"..cjson.encode(credentials))
 
@@ -80,7 +80,7 @@ _M.get_usage=function(newScopes)
         end
       end
   else
-    return responses.send_HTTP_OK("scope格式出错")
+    return responses.send(403,"scope格式出错")
   end        
   return (usageFlag and "pk") or "sk"    
 
