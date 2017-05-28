@@ -137,12 +137,6 @@ function generateSelfToken(params)
 
     end 
 
-
-function checkRedirect(oriUri,pattern)
-    local from, _, err = ngx.re.find(oriUri,pattern, "oj")
-    return from
-end
-
  
 
 function KeyAuthHandler:access(conf)
@@ -167,16 +161,23 @@ function KeyAuthHandler:access(conf)
 
 
 
-  --处理登录注册和查询所有scope,此时不需要token和ownerid，直接转发
-  local uri_table = {[[\/login]],[[socket.io]]}
+  --处理登录注册和查询所有scope,此时不需要token和ownerid，如果此类uri位于url的第一位直接转发（避免与用户名重名）
+  local uri_table = {[[\/login]],[[\/ent]],[[\/mail\/verify]]}
   local uri_flag=false
   for i = 1,#uri_table do
-    local from = checkRedirect(oriUri,uri_table[i])
-    if from then
+    local from =ngx.re.find(oriUri,uri_table[i], "oj")
+    if from and (from==1) then
           uri_flag=true
       break
     end
 
+  end
+
+
+  --socket直接转发
+  local from_socket,err = ngx.re.find(oriUri,[[socket.io]], "oj")
+  if from_socket then
+    uri_flag=true
   end
 
 
@@ -206,6 +207,7 @@ function KeyAuthHandler:access(conf)
       --如果无token参数则报错
         return responses.send(403,"参数有误缺少token")
     else 
+
       --如果有token参数，先判断token的格式是否正确
      
         local tokenObj=tokenutil.get_tokenAgent(token)
@@ -224,33 +226,42 @@ function KeyAuthHandler:access(conf)
         if not params["id"] then
           return responses.send(403,"token有误缺少tokenid信息")
         end
+         local flag = false
 
 
-
-
-        --则根据token的id对应的scopes数据判断是否有此接口的权限，
-        --如果此token的权限包含此接口的权限，则把token中的用户id连接到url后再转发
-        --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
-        local scopes=load_credential(params["id"])
-        --params["scopes"]=scopes
-
-        local myscopes=apiutil.getScope(oriUri,method)
-        local myscopesArr = apiutil.split(myscopes,",")
-
-        --根据接口参数token中的scopes与constant文件中的scope比对，判断是否有使用权限
-        local flag = false
-        for i = 1, #myscopesArr do
-            local index = string.find(scopes,myscopesArr[i], 1)
-
-            if not index then
-              break
-            elseif i==#myscopesArr then
+          -- 如果是统计的接口，则只要有临时token无需scope直接访问
+         local tokenres,err = singletons.dao.keyauth_token:find_all{id=params["id"],is_self_token=true}
+         local sta_from,err = ngx.re.find(oriUri,"/api/statistics","oj")
+         if sta_from then
+            if tokenres and (#tokenres)>0 then
               flag=true
             end
-         end
+          else
+              --则根据token的id对应的scopes数据判断是否有此接口的权限，
+              --如果此token的权限包含此接口的权限，则转发
+              --（upstream服务器端判断如果有此用户id则使用此用户id，无此用户id则使用session中的用户id，都没有则报错）
+              local scopes=load_credential(params["id"])
+              --params["scopes"]=scopes
+
+              local myscopes=apiutil.getScope(oriUri,method)
+              local myscopesArr = apiutil.split(myscopes,",")
+
+              --根据接口参数token中的scopes与constant文件中的scope比对，判断是否有使用权限
+              for i = 1, #myscopesArr do
+                  local index = string.find(scopes,myscopesArr[i], 1)
+
+                  if not index then
+                    break
+                  elseif i==#myscopesArr then
+                    flag=true
+                  end
+               end
+
+           end
 
          
         if flag then
+          ngx.log(ngx.ERR,oriUri.."+++++")
           local from, _, err
           local resultparams
            --1.scope的获取

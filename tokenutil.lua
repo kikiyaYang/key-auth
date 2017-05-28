@@ -35,7 +35,7 @@ _M.issue_token=function(params,isSelfTokenFlag)
     if isSelfTokenFlag then
 
       local oritoken,err = singletons.dao.keyauth_token:find_all{is_self_token=true,ownerid=params["ownerid"]}
-      if  #oritoken>0 then  
+      if oritoken and #oritoken>0 then  
         newtoken["id"]=oritoken[1]["id"]
 
         newtoken["token"]= apiutil.generateToken(params["usage"],params["ownerid"],newtoken["id"])
@@ -72,9 +72,8 @@ _M.get_usage=function(newScopes)
         if err then   
           return responses.send(403,"scope格式出错")
         end
-        ngx.log(ngx.ERR,myscopes[i].."++"..cjson.encode(credentials))
 
-        if credentials[1] and (not credentials[1].public) then
+        if credentials and credentials[1] and (not credentials[1].public) then
           usageFlag=false
           break
         end

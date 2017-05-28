@@ -58,6 +58,23 @@ return {
          ["/upload/tokens/:ownerid"]=
         {
           ["GET"]="tokens:write"
-        }         
+        }, 
+        ["/dataSet/dataSet/:ownerid"]=
+        {
+          ["POST"]="datasets:write"
+         }, 
+         ["/dataSet/dataSets/:ownerid"]=
+        {
+          ["GET"]="datasets:list"
+         },     
+          ["/dataSet/dataSet/:ownerid/:datasetId"]=
+        {
+          ["PATCH,DELETE"]="datasets:write",
+          ["GET"]="datasets:read"
+         },     
+          ["/tileset/user/:ownerid"]=
+        {
+          ["GET"]="tilesets:list"
+         }
 }
   
