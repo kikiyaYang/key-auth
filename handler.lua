@@ -207,7 +207,9 @@ function KeyAuthHandler:access(conf)
       --如果无token参数则报错
         return responses.send(403,"参数有误缺少token")
     else 
-
+      --如果有token参数，先判断token是不是最新的（token是否存在）
+      local is_val_token,err=singletons.dao.keyauth_token:find_all{token=token}
+      if is_val_token and (#is_val_token)>0 then
       --如果有token参数，先判断token的格式是否正确
      
         local tokenObj=tokenutil.get_tokenAgent(token)
@@ -309,8 +311,8 @@ function KeyAuthHandler:access(conf)
        end
      end 
    end
-
-  end
+ end
+end
 
 
 
