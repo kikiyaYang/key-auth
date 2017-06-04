@@ -132,7 +132,7 @@ function generateSelfToken(params)
       local scopeStr = apiutil.generateScope(scopes_public,scopes)
       local ownerid = params['ownerid']
       local tokenParams = {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid,["usage"]="sk"}
-
+      --bug 每次生成的token id 和上一次的都是一样的
       tokenutil.issue_token(tokenParams,true)
 
     end 
@@ -220,7 +220,8 @@ function KeyAuthHandler:access(conf)
         if not params["ownerid"] then
           return responses.send(403,"token有误缺少ownerid信息")
 
-        --url中是否包含token中的ownerid ，检查ownerid是否一致
+        --url中是否包含token中的ownerid ，检查ownerid是否一致,
+          --这个地方有漏洞,不能简单的find,需要根据不同的url规则查找对应的ownerId
         elseif not ngx.re.find(oriUri,"/"..params["ownerid"],"oj") then
           return responses.send(403,"url中的ownerid与token中的ownerid不一致")
         end
@@ -247,7 +248,6 @@ function KeyAuthHandler:access(conf)
 
               local myscopes=apiutil.getScope(oriUri,method)
               local myscopesArr = apiutil.split(myscopes,",")
-
               --根据接口参数token中的scopes与constant文件中的scope比对，判断是否有使用权限
               for i = 1, #myscopesArr do
                   local index = string.find(scopes,myscopesArr[i], 1)
@@ -263,7 +263,6 @@ function KeyAuthHandler:access(conf)
 
          
         if flag then
-          ngx.log(ngx.ERR,oriUri.."+++++")
           local from, _, err
           local resultparams
            --1.scope的获取

@@ -39,7 +39,7 @@ return {
         {
           ["GET"]="styles:read"
          },  
-         ["/styles/:ownerId/:styleId/:subResourceId/sprite/:name"]=
+         ["/styles/:ownerId/:styleId/:subResourceId/sprite:name"]=
         {
           ["GET"]="styles:read"
          },             
@@ -75,6 +75,36 @@ return {
           ["/tileset/user/:ownerid"]=
         {
           ["GET"]="tilesets:list"
+         },
+        ["/tileSet/:sources"]=
+        {
+          ["GET"]="tilesets:read",
+          ["DELETE,PUT"]="tilesets:write"
+         },
+        ["/api/fonts/:ownerId/:font/:range"]=
+        {
+          ["GET"]="fonts:read"
+         },
+        ["/api/fonts/:ownerId/:font/coverage"]=
+        {
+          ["GET"]="fonts:read"
+         },
+        ["/api/fonts/:ownerId/:fontname/metadata"]=
+        {
+          ["GET"]="fonts:read"
+         },
+        ["/api/fonts/:ownerId/:fontname/static/:imgName"]=
+        {
+          ["GET"]="fonts:read"
+         },
+        ["/api/fonts/:ownerId"]=
+        {
+          ["GET"]="fonts:list",
+            ["POST"]="fonts:write"
+         },
+        ["/api/fonts/:ownerId/:fontname"]=
+        {
+            ["DELETE"]="fonts:write"
          }
 }
   
