@@ -142,7 +142,6 @@ function generateSelfToken(params)
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
-
   --静态资源直接转发
   local oriUri=apiutil.split(ngx.req.raw_header()," ")[2]
   local base_url=apiutil.split(oriUri,"?")[1]
@@ -187,7 +186,7 @@ function KeyAuthHandler:access(conf)
     local method= ngx.req.get_method()
 
     --所有参数
-    params = apiutil.retrieve_parameters()
+    local params = apiutil.retrieve_parameters()
 
     --登陆后第一次生成用户token，以及退出时删除token
     checkpropToken(method,oriUri)
@@ -223,7 +222,9 @@ function KeyAuthHandler:access(conf)
         --url中是否包含token中的ownerid ，检查ownerid是否一致,
           --这个地方有漏洞,不能简单的find,需要根据不同的url规则查找对应的ownerId
         elseif not ngx.re.find(oriUri,"/"..params["ownerid"],"oj") then
-          return responses.send(403,"url中的ownerid与token中的ownerid不一致")
+            if not ngx.re.find(oriUri,"/fonts/mapDesign","oj") then
+                return responses.send(403,"url中的ownerid与token中的ownerid不一致")
+            end
         end
 
         if not params["id"] then
