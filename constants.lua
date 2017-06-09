@@ -1,25 +1,25 @@
 return {
-      ["/api/token/:ownerid"]=
+      ["/api/token/:ownerId"]=
         {
           ["GET"]="tokens:read",
           ["POST"]="tokens:write"
         },
-        ["/api/token/:ownerid/:tokenid"]=
+        ["/api/token/:ownerId/:tokenid"]=
         {
           ["GET"]="tokens:read",
           ["PUT,PATCH,DELETE"]="tokens:write"
         },
           
-         ["/api/scope/:ownerid"]=
+         ["/api/scope/:ownerId"]=
         {
           ["GET"]="scopes:list"
         },
-        ["/styles/:ownerid"]=
+        ["/styles/:ownerId"]=
         {
           ["GET"]="styles:list",
           ["POST"]="styles:write"
          },
-         ["/styles/:ownerid/duplicate"]=
+         ["/styles/:ownerId/duplicate"]=
         {
           ["POST"]="styles:write"
          },
@@ -35,7 +35,7 @@ return {
         {
           ["GET"]="styles:read"
          },  
-         ["/styles/:ownerid/:styleId/:subResourceId/static"]=
+         ["/styles/:ownerId/:styleId/:subResourceId/static"]=
         {
           ["GET"]="styles:read"
          },  
@@ -55,24 +55,33 @@ return {
         {
           ["PATCH"]="styles:write"
          }, 
-         ["/upload/tokens/:ownerid"]=
+         ["/upload/tokens/:ownerId"]=
         {
           ["GET"]="tokens:write"
         }, 
-        ["/dataSet/dataSet/:ownerid"]=
+        ["/api/dataSet/:ownerId"]=
         {
           ["POST"]="datasets:write"
          }, 
-         ["/dataSet/dataSets/:ownerid"]=
+         ["/api/dataSet/:ownerId"]=
         {
-          ["GET"]="datasets:list"
-         },     
-          ["/dataSet/dataSet/:ownerid/:datasetId"]=
+          ["GET"]="datasets:list",
+          ["POST"]="datasets:write"
+         },
+          ["/api/dataSet/:ownerId/:datasetId"]=
         {
           ["PATCH,DELETE"]="datasets:write",
           ["GET"]="datasets:read"
-         },     
-          ["/tileset/user/:ownerid"]=
+         },
+        ["/api/dataOperate/:owneId/:datasetId/query"]=
+        {
+          ["GET,POST"]="datasets:read"
+         },["/api/data/:ownerId/:datasetId"]=
+        {
+          ["GET"]="datasets:read",
+          ["POST"]="datasets:read"
+         },
+          ["/tileSet/user/:ownerId"]=
         {
           ["GET"]="tilesets:list"
          },
