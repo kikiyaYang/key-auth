@@ -11,7 +11,7 @@ local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 
 local cjson = require "cjson.safe"
-
+local ngx_re = require "ngx.re"
 
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
@@ -137,7 +137,22 @@ function generateSelfToken(params)
 
     end 
 
- 
+function checkTilesetToken(uri,ownerId)
+    local tileSeturi = ngx.re.match(uri,"/tileSet/[\\w+,.]+")
+    if tileSeturi then
+        local sources = utils.split(utils.strip(tileSeturi[0],"/tileSet"),",")
+        for i=1,#(sources) do
+            local source = utils.split(sources[i],'.')
+            if source[1]~="default" and source[1]~=ownerId then
+                return false
+            end
+        end
+
+        return true
+    else
+        return false
+    end
+end
 
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
@@ -210,7 +225,7 @@ function KeyAuthHandler:access(conf)
       local is_val_token,err=singletons.dao.keyauth_token:find_all{token=token}
       if is_val_token and (#is_val_token)>0 then
       --如果有token参数，先判断token的格式是否正确
-     
+
         local tokenObj=tokenutil.get_tokenAgent(token)
         params["ownerid"]=tokenObj["u"]
         params["id"]=tokenObj["a"]
@@ -220,8 +235,8 @@ function KeyAuthHandler:access(conf)
           return responses.send(403,"token有误缺少ownerid信息")
 
         --url中是否包含token中的ownerid ，检查ownerid是否一致,
-          --这个地方有漏洞,不能简单的find,需要根据不同的url规则查找对应的ownerId
-        elseif not ngx.re.find(oriUri,"/"..params["ownerid"],"oj") then
+          --这个地方有漏洞,不能简单的find,需要根据不同的url规则查找对应的ownerId,tileset
+        elseif (not ngx.re.find(oriUri,"/"..params["ownerid"],"oj")) and (not checkTilesetToken(oriUri,params["ownerid"])) then
             if not ngx.re.find(oriUri,"/fonts/mapDesign","oj") then
                 return responses.send(403,"url中的ownerid与token中的ownerid不一致")
             end
@@ -267,7 +282,8 @@ function KeyAuthHandler:access(conf)
           local from, _, err
           local resultparams
            --1.scope的获取
-          from, _, err = ngx.re.find(oriUri, [[\/api\/scope]], "oj")
+          --是否 也需要根据ownerId鉴权处理
+          from, _, err = ngx.re.find(oriUri, [[\/api\/scopes]], "oj")
           if from then
               tokenutil.findScope()
           end

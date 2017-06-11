@@ -15,20 +15,18 @@ local _M = {}
 --新增token 参数结构 {["ownerid"]=ownerid,["scopes"]=scopeStr,["note"]=ownerid},usageParam(如果传入则用此参数，此参数不传，则usage取之于前一个params)
 _M.issue_token=function(params,isSelfTokenFlag)
 
-
     if not params["usage"] then
-      params["usage"]= _M.get_usage(params["newscopes"])     
+      params["usage"]= _M.get_usage(params["scopes"])
     end
 
     local tokenVal = apiutil.generateToken(params["usage"],params["ownerid"],id)
 
     local newtoken = {}
-    newtoken["scopes"]=params["newscopes"]
+    newtoken["scopes"]=params["scopes"]
     newtoken["usage"]=params["usage"]
     newtoken["note"]=params["note"]
     newtoken["ownerid"]=params["ownerid"]
     newtoken["is_self_token"]=isSelfTokenFlag
-
 
 
     --已有自身全部scope的token 则只更新
@@ -126,9 +124,9 @@ _M.updateToken=function(params,oriUri)
        local resultparams=apiutil.get_uri_params("/api/token/:ownerid/:tokenid",oriUri,params)
 
        --local token,err = singletons.dao.keyauth_token:find_all {id = resultparams["id"]}
-       if resultparams["newscopes"] then
-          newtoken["scopes"]=resultparams["newscopes"]
-          newtoken["usage"]=_M.get_usage(resultparams["newscopes"])
+       if resultparams["scopes"] then
+          newtoken["scopes"]=resultparams["scopes"]
+          newtoken["usage"]=_M.get_usage(resultparams["scopes"])
           newtoken["token"]=apiutil.generateToken(newtoken["usage"],resultparams["ownerid"],resultparams["tokenid"])
           updateid=resultparams["tokenid"]
       end

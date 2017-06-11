@@ -4,6 +4,10 @@ return {
           ["GET"]="tokens:read",
           ["POST"]="tokens:write"
         },
+        ["/api/scopes/:ownerId"]=
+        {
+          ["GET"]="scopes:list"
+        },
         ["/api/token/:ownerId/:tokenid"]=
         {
           ["GET"]="tokens:read",

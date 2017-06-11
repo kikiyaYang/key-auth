@@ -7,7 +7,7 @@ local responses = require "kong.tools.responses"
 
 
 
-math.randomseed(os.time())
+
 
 
 local _M = {}
@@ -105,6 +105,7 @@ end
 --根据三个参数生成token
 _M.generateToken =function(usage,ownerid,tokenId)
     local token = ngx.encode_base64(cjson.encode({["a"]=tokenId,["u"]=ownerid}))
+    math.randomseed(os.time())
     local tokenEnd=string.gsub(math.random(),".","",2)
     return usage.."."..token.."."..tokenEnd
 
@@ -123,7 +124,7 @@ _M.retrieve_parameters=function()
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
   elseif content_type and string.find(content_type:lower(), "application/json", nil, true) then
     body_parameters, err = cjson.decode(ngx.req.get_body_data())
-    if err then 
+    if err then
       body_parameters = {} 
     end
   else
